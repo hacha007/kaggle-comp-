@@ -1,0 +1,24 @@
+---
+title: "house price pred"
+author: "Brahimi Hachem"
+date: "2024-10-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+library(tidyverse)
+```
+```{r}
+house_train <- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/train.csv")
+house_test <- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/test.csv")
+ss<- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/sample_submission.csv")
+```
+```{r}
+house_train %>% glimpse()
+```
+
