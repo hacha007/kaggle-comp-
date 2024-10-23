@@ -12,13 +12,85 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(tidymodels)
+library(ggcorrplot)
 ```
+
 ```{r}
 house_train <- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/train.csv")
 house_test <- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/test.csv")
 ss<- read_csv("C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/sample_submission.csv")
 ```
+
 ```{r}
 house_train %>% glimpse()
+```
+
+```{r}
+house_train %>% select(where(is.character)) %>% is.na() %>% colSums()
+```
+
+```{r}
+house_train %>% select(where(is.double)) %>% is.na() %>% colSums()
+```
+
+```{r}
+df1<- house_train %>% 
+  select(!where(is.character)) %>% 
+  select(-c(Id,LotFrontage,MasVnrArea,GarageYrBlt)) #%>% 
+ # is.na() %>% 
+ # colSums()
+
+
+#i decided to avoid dealing with the missing values in the columns that have a lot of missing values and charecter columns 
+```
+
+```{r}
+df1 %>% glimpse()
+```
+
+```{r}
+corr<- df1 %>% cor(use="pairwise.complete.obs")
+corr %>% ggcorrplot::ggcorrplot(type = "lower", lab = T,lab_size = 2, colors = c("blue", "white", "red"), title = "Correlation plot of the variables",tl.cex = 7,digits = 1) -> corr_plot 
+
+
+
+plotly::ggplotly(corr_plot)
+```
+
+```{r}
+le_df <- df1 %>% select(c("OverallQual","1stFlrSF","GrLivArea","FullBath","GarageCars","GarageArea","SalePrice")) 
+  
+```
+
+```{r}
+lr_model <- linear_reg() %>% set_engine("lm") 
+```
+
+```{r}
+lr_rec <- le_df %>% recipe(SalePrice ~ .) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+```
+
+```{r}
+lr_wf <- workflow() %>% add_model(lr_model) %>% add_recipe(lr_rec)
+```
+
+```{r}
+lr_fit <- lr_wf %>% fit(data = le_df)
+```
+
+```{r}
+lr_fit %>% pull_workflow_fit() %>% tidy()
+```
+
+```{r}
+lr_fit %>% predict(new_data = house_test) -> predictions 
+ss$SalePrice <- predictions$.pred
+```
+
+```{r}
+write_csv(ss,"C:/Users/Hachem Brahimi/Desktop/Last Data/kaggle comp/kaggle-comp-/house price/submission.csv")
 ```
 
