@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
+
+## Setups :
 ```{r}
 library(tidyverse)
 library(tidymodels)
@@ -34,6 +36,8 @@ house_train %>% select(where(is.character)) %>% is.na() %>% colSums()
 house_train %>% select(where(is.double)) %>% is.na() %>% colSums()
 ```
 
+
+### No cleaning is done :
 ```{r}
 df1<- house_train %>% 
   select(!where(is.character)) %>% 
@@ -59,10 +63,14 @@ plotly::ggplotly(corr_plot)
 ```
 
 ```{r}
-le_df <- df1 %>% select(c("OverallQual","1stFlrSF","GrLivArea","FullBath","GarageCars","GarageArea","SalePrice")) 
+le_df <- df1 %>%
+  select(c("OverallQual","1stFlrSF","GrLivArea","FullBath","GarageCars","GarageArea","SalePrice")) 
   
 ```
 
+## Modelisation :
+
+### linear reg model :
 ```{r}
 lr_model <- linear_reg() %>% set_engine("lm") 
 ```
@@ -87,6 +95,62 @@ lr_fit %>% pull_workflow_fit() %>% tidy()
 
 ```{r}
 lr_fit %>% predict(new_data = house_test) -> predictions 
+ss$SalePrice <- predictions$.pred
+```
+
+
+
+### Random forest model :
+```{r}
+rf_mod<- rand_forest(mtry = tune(),trees = tune(),min_n = tune()) %>% 
+  set_engine("ranger") %>% 
+  set_mode("regression")
+```
+
+```{r}
+rf_grid <- grid_regular(mtry(range = c(3,6)),
+                        trees(range = c(1000,2000)),
+                        min_n(range = c(2,20)),
+                        levels = 3)
+ctrl <- control_grid(verbose = TRUE)
+metric <- metric_set(rmse)
+rf_folds <- vfold_cv(le_df,v = 5)
+
+```
+
+```{r}
+rf_rec <- le_df %>% recipe(SalePrice ~ .) %>% 
+  step_impute_mean(all_numeric_predictors()) %>% 
+  step_normalize(all_numeric_predictors())
+```
+
+```{r}
+rf_wf <- workflow() %>% add_model(rf_mod) %>% add_recipe(rf_rec)
+```
+
+```{r}
+rf_tune <- tune_grid(rf_wf, resamples = rf_folds, grid = rf_grid, control = ctrl,metrics = metric)
+```
+
+```{r}
+rf_tune %>% collect_metrics() %>% arrange(-mean)
+```
+```{r}
+rf_best <- rand_forest(mtry = 6,trees = 1000,min_n=2) %>% 
+  set_engine("ranger") %>% 
+  set_mode("regression")
+```
+
+```{r}
+rfb_wf <- workflow() %>% add_model(rf_best) %>% add_recipe(rf_rec)
+```
+
+```{r}
+rfb_fit <- rfb_wf %>% fit(data = le_df)
+```
+
+```{r}
+rfb_fit %>% predict(new_data = house_test) -> predictions
 ss$SalePrice <- predictions$.pred
 ```
 
